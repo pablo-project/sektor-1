@@ -28,7 +28,11 @@ function loadConfig(): any {
   // 1. Try environment variable FIREBASE_CONFIG
   if (process.env.FIREBASE_CONFIG) {
     try {
-      cachedConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+      let rawConfig = process.env.FIREBASE_CONFIG.trim();
+      if (rawConfig.startsWith('"') && rawConfig.endsWith('"')) {
+        rawConfig = rawConfig.slice(1, -1);
+      }
+      cachedConfig = JSON.parse(rawConfig);
       return cachedConfig;
     } catch (e) {
       console.warn('⚠️ FIREBASE_CONFIG muhit o‘zgaruvchisini o‘qishda xatolik:', e);
@@ -39,7 +43,8 @@ function loadConfig(): any {
   const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
   if (fs.existsSync(configPath)) {
     try {
-      cachedConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      const fileContent = fs.readFileSync(configPath, 'utf-8');
+      cachedConfig = JSON.parse(fileContent);
       return cachedConfig;
     } catch (e) {
       console.warn('⚠️ firebase-applet-config.json faylini o‘qishda xatolik:', e);
