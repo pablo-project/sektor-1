@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "Appeal": {
+      "title": "Appeal",
+      "description": "Citizen appeal or petition submitted to 1-sektor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "appealNumber": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "mahalla": { "type": "string" },
+        "address": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string" },
+        "organizationId": { "type": "string" },
+        "organizationName": { "type": "string" },
+        "date": { "type": "string" },
+        "deadline": { "type": "string" }
+      },
+      "required": ["id", "fullName", "content", "status"]
+    },
+    "Organization": {
+      "title": "Organization",
+      "description": "Sector responsible department or organization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "leader": { "type": "string" },
+        "phone": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "ShtabTask": {
+      "title": "ShtabTask",
+      "description": "Task created by 1-sektor leadership for organizations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "status": { "type": "string" },
+        "deadline": { "type": "string" },
+        "priority": { "type": "string" }
+      },
+      "required": ["id", "title", "status"]
+    },
+    "MahallaTask": {
+      "title": "MahallaTask",
+      "description": "Task assigned to Mahalla Yettiligi members",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "mahallaId": { "type": "string" },
+        "mahallaName": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" },
+        "deadline": { "type": "string" }
+      },
+      "required": ["id", "title", "mahallaId", "status"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "App settings configuration",
+      "type": "object",
+      "properties": {
+        "botToken": { "type": "string" },
+        "channelId": { "type": "string" },
+        "groupChatId": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/appeals/{appealId}": {
+      "schema": "Appeal",
+      "description": "Citizen appeals records"
+    },
+    "/organizations/{orgId}": {
+      "schema": "Organization",
+      "description": "Registered organizations and contact data"
+    },
+    "/shtab_tasks/{taskId}": {
+      "schema": "ShtabTask",
+      "description": "Shtab tasks assigned to organizations"
+    },
+    "/mahalla_tasks/{taskId}": {
+      "schema": "MahallaTask",
+      "description": "Tasks for Mahalla Yettiligi members"
+    },
+    "/settings/appConfig": {
+      "schema": "Setting",
+      "description": "Application and bot settings"
+    }
+  }
+}
