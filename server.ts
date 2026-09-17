@@ -419,6 +419,8 @@ async function syncWithFirestore() {
   }
 }
 
+let firestoreSyncTimer: any = null;
+
 function savePersistedData() {
   try {
     const userSessionsObj: Record<string, UserSessionData> = {};
@@ -436,20 +438,27 @@ function savePersistedData() {
       updatedAt: new Date().toISOString() 
     }, null, 2);
 
+    // 1. Mahalliy xotiraga darhol yoziladi (Murojaatlar o'chib ketmasligi uchun)
     fs.writeFileSync(STORAGE_FILE, payload, 'utf-8');
-    // Save to backup file as well
     fs.writeFileSync(BACKUP_FILE, payload, 'utf-8');
 
-    // Asynchronously sync with Firestore Cloud Database
-    saveAppealsToFirestore(appeals).catch((e) => console.warn('Cloud appeals save note:', e.message));
-    saveTasksToFirestore(shtabTasks).catch((e) => console.warn('Cloud tasks save note:', e.message));
-    saveMahallaTasksToFirestore(mahallaTasks).catch((e) => console.warn('Cloud mahalla tasks save note:', e.message));
-    saveOrganizationsToFirestore(organizations).catch((e) => console.warn('Cloud orgs save note:', e.message));
-    saveSettingsToFirestore({
-      savedTelegramToken,
-      userSessions: userSessionsObj,
-      updatedAt: new Date().toISOString(),
-    }).catch((e) => console.warn('Cloud settings save note:', e.message));
+    // 2. Firebase'ga yozishni 3 daqiqaga kechiktiramiz (Limitni tejash uchun)
+    if (firestoreSyncTimer) {
+      clearTimeout(firestoreSyncTimer);
+    }
+    
+    firestoreSyncTimer = setTimeout(() => {
+      saveAppealsToFirestore(appeals).catch((e) => console.warn('Cloud appeals note:', e.message));
+      saveTasksToFirestore(shtabTasks).catch((e) => console.warn('Cloud tasks note:', e.message));
+      saveMahallaTasksToFirestore(mahallaTasks).catch((e) => console.warn('Cloud mahalla tasks note:', e.message));
+      saveOrganizationsToFirestore(organizations).catch((e) => console.warn('Cloud orgs note:', e.message));
+      saveSettingsToFirestore({
+        savedTelegramToken,
+        userSessions: userSessionsObj,
+        updatedAt: new Date().toISOString(),
+      }).catch((e) => console.warn('Cloud settings note:', e.message));
+    }, 3 * 60 * 1000); 
+
   } catch (err) {
     console.error('Failed to save persisted data:', err);
   }
