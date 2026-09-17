@@ -444,38 +444,13 @@ function savePersistedData() {
       updatedAt: new Date().toISOString() 
     }, null, 2);
 
-    // 1. MAHALLIY XOTIRAGA DARHOL YOZAMIZ (Murojaat uchib ketmasligi kafolati)
+    // 1. FAqat va faqat MAHALLIY XOTIRAGA DARHOL YOZAMIZ (Murojaat uchib ketmasligi uchun)
     fs.writeFileSync(STORAGE_FILE, payload, 'utf-8');
     fs.writeFileSync(BACKUP_FILE, payload, 'utf-8');
 
-    // 2. FIREBASE UCHUN AQLLI FILTR
-    const currentHash = generateCoreDataHash();
-    
-    // Agar murojaat yoki vazifa o'zgarmagan bo'lsa (fuqaro botda shunchaki menyu bosa), bulutni charchatmaymiz!
-    if (currentHash === lastSyncedHash) {
-      return; 
-    }
-
-    // Haqiqiy o'zgarish bo'ldimi? Unda zudlik bilan (3 soniyada) Firebase'ga yozamiz!
-    lastSyncedHash = currentHash;
-
-    if (firestoreSyncTimer) {
-      clearTimeout(firestoreSyncTimer);
-    }
-    
-    firestoreSyncTimer = setTimeout(() => {
-      saveAppealsToFirestore(appeals).catch((e) => console.warn('Cloud appeals:', e.message));
-      saveTasksToFirestore(shtabTasks).catch((e) => console.warn('Cloud tasks:', e.message));
-      saveMahallaTasksToFirestore(mahallaTasks).catch((e) => console.warn('Cloud mahalla tasks:', e.message));
-      saveOrganizationsToFirestore(organizations).catch((e) => console.warn('Cloud orgs:', e.message));
-      saveSettingsToFirestore({
-        savedTelegramToken,
-        userSessions: userSessionsObj,
-        updatedAt: new Date().toISOString(),
-      }).catch((e) => console.warn('Cloud settings:', e.message));
-      
-      console.log("⚡ [Tezkor Sinxronizatsiya] Yangi murojaat yoki o'zgarish Firebase'ga yozildi.");
-    }, 3000); 
+    // DIQQAT: Limitni yeb yuboruvchi barcha taymerlar va "Bulk" (to'plab) yozuvchi 
+    // Firebase funksiyalari bu yerdan butunlay olib tashlandi!
+    // Firebase endi faqat API ishga tushganda 1 ta kvota bilan ishlaydi.
 
   } catch (err) {
     console.error('Failed to save persisted data:', err);
