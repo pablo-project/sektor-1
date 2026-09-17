@@ -457,7 +457,7 @@ function savePersistedData() {
         userSessions: userSessionsObj,
         updatedAt: new Date().toISOString(),
       }).catch((e) => console.warn('Cloud settings note:', e.message));
-    }, 3 * 60 * 1000); 
+    }, 30000); 
 
   } catch (err) {
     console.error('Failed to save persisted data:', err);
