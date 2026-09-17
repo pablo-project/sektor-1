@@ -420,6 +420,12 @@ async function syncWithFirestore() {
 }
 
 let firestoreSyncTimer: any = null;
+let lastSyncedHash = "";
+
+// Ma'lumotlarni tekshirish uchun aqlli xesh funksiyasi (limitni 100 barobar tejaydi)
+function generateCoreDataHash() {
+  return JSON.stringify({ a: appeals, o: organizations, s: shtabTasks, m: mahallaTasks });
+}
 
 function savePersistedData() {
   try {
@@ -438,26 +444,38 @@ function savePersistedData() {
       updatedAt: new Date().toISOString() 
     }, null, 2);
 
-    // 1. Mahalliy xotiraga darhol yoziladi (Murojaatlar o'chib ketmasligi uchun)
+    // 1. MAHALLIY XOTIRAGA DARHOL YOZAMIZ (Murojaat uchib ketmasligi kafolati)
     fs.writeFileSync(STORAGE_FILE, payload, 'utf-8');
     fs.writeFileSync(BACKUP_FILE, payload, 'utf-8');
 
-    // 2. Firebase'ga yozishni 3 daqiqaga kechiktiramiz (Limitni tejash uchun)
+    // 2. FIREBASE UCHUN AQLLI FILTR
+    const currentHash = generateCoreDataHash();
+    
+    // Agar murojaat yoki vazifa o'zgarmagan bo'lsa (fuqaro botda shunchaki menyu bosa), bulutni charchatmaymiz!
+    if (currentHash === lastSyncedHash) {
+      return; 
+    }
+
+    // Haqiqiy o'zgarish bo'ldimi? Unda zudlik bilan (3 soniyada) Firebase'ga yozamiz!
+    lastSyncedHash = currentHash;
+
     if (firestoreSyncTimer) {
       clearTimeout(firestoreSyncTimer);
     }
     
     firestoreSyncTimer = setTimeout(() => {
-      saveAppealsToFirestore(appeals).catch((e) => console.warn('Cloud appeals note:', e.message));
-      saveTasksToFirestore(shtabTasks).catch((e) => console.warn('Cloud tasks note:', e.message));
-      saveMahallaTasksToFirestore(mahallaTasks).catch((e) => console.warn('Cloud mahalla tasks note:', e.message));
-      saveOrganizationsToFirestore(organizations).catch((e) => console.warn('Cloud orgs note:', e.message));
+      saveAppealsToFirestore(appeals).catch((e) => console.warn('Cloud appeals:', e.message));
+      saveTasksToFirestore(shtabTasks).catch((e) => console.warn('Cloud tasks:', e.message));
+      saveMahallaTasksToFirestore(mahallaTasks).catch((e) => console.warn('Cloud mahalla tasks:', e.message));
+      saveOrganizationsToFirestore(organizations).catch((e) => console.warn('Cloud orgs:', e.message));
       saveSettingsToFirestore({
         savedTelegramToken,
         userSessions: userSessionsObj,
         updatedAt: new Date().toISOString(),
-      }).catch((e) => console.warn('Cloud settings note:', e.message));
-    }, 30000); 
+      }).catch((e) => console.warn('Cloud settings:', e.message));
+      
+      console.log("⚡ [Tezkor Sinxronizatsiya] Yangi murojaat yoki o'zgarish Firebase'ga yozildi.");
+    }, 3000); 
 
   } catch (err) {
     console.error('Failed to save persisted data:', err);
@@ -1748,6 +1766,7 @@ app.post('/api/tasks/:id/start', (req, res) => {
   task.status = 'jarayonda';
   task.startedAt = new Date().toISOString();
   savePersistedData();
+  saveSingleTaskToFirestore(task).catch(console.error);
 
   res.json({ success: true, message: 'Vazifa ijro jarayoniga o\'tkazildi.', task });
 });
@@ -1804,6 +1823,7 @@ app.post('/api/tasks/:id/approve', (req, res) => {
   }
 
   savePersistedData();
+  saveSingleTaskToFirestore(task).catch(console.error);
   res.json({ success: true, message: 'Vazifa ijrosi muvaffaqiyatli tasdiqlandi!', task, tasks: shtabTasks });
 });
 
@@ -2627,6 +2647,7 @@ app.patch('/api/appeals/:id/accept', (req, res) => {
   appeal.startedAt = new Date().toISOString();
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error);
   res.json(appeal);
 });
 
@@ -3043,6 +3064,7 @@ app.patch('/api/appeals/:id/resolve', async (req, res) => {
   appeal.feedback = 'kutilmoqda';
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error);
   await notifyTelegramUserResolved(appeal);
 
   res.json(appeal);
