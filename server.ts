@@ -3022,7 +3022,18 @@ app.patch('/api/appeals/:id/resolve-coassignment', async (req, res) => {
         `🎉 <b>Hamkor tashkilotdan ijro xulosasi!</b>\n\n` +
         `📄 <b>Murojaat №:</b> <code>${appeal.appealNumber}</code>\n` +
         `🏢 <b>Tashkilot:</b> ${org?.name}\n` +
-        `💬 <b>Bajarilgan ish / Xulosa:</b>\n<i>${resolutionText}</i>`;
+        `💬 <b>Bajarilgan ish / Xulosa:</b>\n<i>${resolutionText}</i>\n\n` +
+        `Iltimos, tashkilot tomonidan bajarilgan ish sifatini baholang:`;
+
+      // 🔥 MANA SHU YERDA TUGMALAR QO'SHILDI
+      const inlineKeyboard = {
+        inline_keyboard: [
+          [
+            { text: '👍 Roziman (Ijobiy)', callback_data: `feedback_agree_${appeal.id}` },
+            { text: '👎 E\'tirozim bor', callback_data: `feedback_object_${appeal.id}` },
+          ],
+        ],
+      };
 
       if (resolutionPhotoUrl && resolutionPhotoUrl.startsWith('data:image/')) {
         const matches = resolutionPhotoUrl.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
@@ -3032,14 +3043,19 @@ app.patch('/api/appeals/:id/resolve-coassignment', async (req, res) => {
         await telegramBot.sendPhoto(appeal.telegramChatId, photoBuffer, {
           caption: text,
           parse_mode: 'HTML',
+          reply_markup: inlineKeyboard, // 🔥 TUGMALAR ULANDI
         });
       } else if (resolutionPhotoUrl) {
         await telegramBot.sendPhoto(appeal.telegramChatId, resolutionPhotoUrl, {
           caption: text,
           parse_mode: 'HTML',
+          reply_markup: inlineKeyboard, // 🔥 TUGMALAR ULANDI
         });
       } else {
-        await telegramBot.sendMessage(appeal.telegramChatId, text, { parse_mode: 'HTML' });
+        await telegramBot.sendMessage(appeal.telegramChatId, text, { 
+          parse_mode: 'HTML',
+          reply_markup: inlineKeyboard, // 🔥 TUGMALAR ULANDI
+        });
       }
     } catch (botErr: any) {
       console.warn('Telegram bot send resolution notice error:', botErr.message);
@@ -3048,7 +3064,6 @@ app.patch('/api/appeals/:id/resolve-coassignment', async (req, res) => {
 
   res.json({ success: true, appeal });
 });
-
 app.patch('/api/appeals/:id/reject-authority', (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
