@@ -1665,7 +1665,7 @@ app.post('/api/tasks/seed-all-tasks', (req, res) => {
 });
 
 // Yangi alohida vazifa yaratish
-app.post('/api/tasks', (req, res) => {
+app.post('/api/tasks', async (req, res) => {
   const { title, description, targetOrgId, targetOrgIds, deadline, category } = req.body;
 
   if (!title || !description) {
@@ -1712,6 +1712,11 @@ app.post('/api/tasks', (req, res) => {
 
   shtabTasks = [...newTasks, ...shtabTasks];
   savePersistedData();
+
+  // 🔥 Yangi qo'shilgan vazifalarni Firestore bazasiga bittalab saqlaymiz
+  for (const t of newTasks) {
+    await saveSingleTaskToFirestore(t).catch(err => console.warn('Task save error:', err));
+  }
 
   if (newTasks.length === 1) {
     return res.json({
@@ -1778,6 +1783,8 @@ app.post('/api/tasks/:id/submit-report', (req, res) => {
   task.adminFeedback = undefined; // eski feedbackni tozalash
 
   savePersistedData();
+  saveSingleTaskToFirestore(task).catch(console.error); // 🔥 UPDATE: Saqlanganda bazaga ham
+  
   res.json({ success: true, message: 'Hisobotingiz Bosh Kabinetga muvaffaqiyatli yuborildi. Bosh Kabinet tekshiruvidan so\'ng tasdiqlanadi.', task });
 });
 
@@ -1816,6 +1823,7 @@ app.post('/api/tasks/:id/reject', (req, res) => {
   task.adminFeedback = adminFeedback || 'Hisobot to\'liq emas, qayta ko\'rib chiqilsin.';
 
   savePersistedData();
+  saveSingleTaskToFirestore(task).catch(console.error); // 🔥 UPDATE: Saqlanganda bazaga ham
   res.json({ success: true, message: 'Vazifa qayta ishlash uchun qaytarildi.', task, tasks: shtabTasks });
 });
 
@@ -1874,7 +1882,7 @@ app.get('/api/mahalla-tasks/mahalla/:mahallaId', (req, res) => {
 });
 
 // Barcha 51 ta mahallaga namunaviy vazifalarni biriktirish (Seed All)
-app.post('/api/mahalla-tasks/seed-all', (req, res) => {
+app.post('/api/mahalla-tasks/seed-all', async (req, res) => { // 🔥 async qo'shildi
   const { deadlineDays = 15 } = req.body;
   const deadlineDate = new Date();
   deadlineDate.setDate(deadlineDate.getDate() + Number(deadlineDays));
@@ -1912,6 +1920,10 @@ app.post('/api/mahalla-tasks/seed-all', (req, res) => {
   if (generated.length > 0) {
     mahallaTasks = [...generated, ...mahallaTasks];
     savePersistedData();
+    // 🔥 Bulutga saqlash
+    for (const mt of generated) {
+        await saveSingleMahallaTaskToFirestore(mt).catch(console.error);
+    }
   }
 
   res.json({
@@ -1924,7 +1936,7 @@ app.post('/api/mahalla-tasks/seed-all', (req, res) => {
 });
 
 // Yangi mahalla vazifasi yaratish (Bosh Kabinet tomonidan bitta yoki barcha mahallalarga)
-app.post('/api/mahalla-tasks', (req, res) => {
+app.post('/api/mahalla-tasks', async (req, res) => { // 🔥 async qo'shildi
   const { title, description, targetRole, mahallaId, targetOrgId, targetOrgName, deadline, category } = req.body;
 
   if (!title || !description) {
@@ -1954,6 +1966,11 @@ app.post('/api/mahalla-tasks', (req, res) => {
 
     mahallaTasks = [...newTasks, ...mahallaTasks];
     savePersistedData();
+    // 🔥 Bulutga saqlash
+    for (const mt of newTasks) {
+        await saveSingleMahallaTaskToFirestore(mt).catch(console.error);
+    }
+    
     return res.json({
       success: true,
       message: 'Barcha 14 ta mahallaga vazifa muvaffaqiyatli yuborildi.',
@@ -1980,6 +1997,8 @@ app.post('/api/mahalla-tasks', (req, res) => {
 
     mahallaTasks.unshift(newTask);
     savePersistedData();
+    await saveSingleMahallaTaskToFirestore(newTask).catch(console.error); // 🔥 Bulutga saqlash
+    
     return res.json({
       success: true,
       message: `${newTask.mahallaName}ga vazifa yuborildi.`,
@@ -2001,6 +2020,7 @@ app.post('/api/mahalla-tasks/:id/start', (req, res) => {
   task.status = 'jarayonda';
   task.startedAt = new Date().toISOString();
   savePersistedData();
+  saveSingleMahallaTaskToFirestore(task).catch(console.error); // 🔥 Bulutga saqlash
 
   res.json({
     success: true,
@@ -2032,6 +2052,8 @@ app.post('/api/mahalla-tasks/:id/xulosa', (req, res) => {
   task.status = 'jarayonda';
 
   savePersistedData();
+  saveSingleMahallaTaskToFirestore(task).catch(console.error); // 🔥 Bulutga saqlash
+  
   res.json({
     success: true,
     message: 'Oflayn o\'rganish xulosasi saqlandi. Xulosani tashkilotga olib borganingizdan so\'ng tashkilot tizimda onlayn tasdiqlaydi.',
@@ -2060,6 +2082,8 @@ app.post('/api/mahalla-tasks/:id/approve', (req, res) => {
   }
 
   savePersistedData();
+  saveSingleMahallaTaskToFirestore(task).catch(console.error); // 🔥 Bulutga saqlash
+  
   res.json({
     success: true,
     message: 'Mahalla yettiligi vazifasi ijrosi va xulosasi onlayn muvaffaqiyatli tasdiqlandi (Bajarildi)!',
@@ -2083,6 +2107,8 @@ app.post('/api/mahalla-tasks/:id/reject', (req, res) => {
   task.approverNote = approverNote || 'Xulosa to\'liq emas, qayta o\'rganilsin.';
 
   savePersistedData();
+  saveSingleMahallaTaskToFirestore(task).catch(console.error); // 🔥 Bulutga saqlash
+  
   res.json({
     success: true,
     message: 'Vazifa xulosasi qayta ishlash uchun qaytarildi.',
@@ -2331,7 +2357,7 @@ app.post('/api/auth/bosh-kabinet', (req, res) => {
 });
 
 // Organization Security & Password Management Endpoints
-app.post('/api/organizations/:id/reset-password', (req, res) => {
+app.post('/api/organizations/:id/reset-password', async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;
 
@@ -2353,6 +2379,9 @@ app.post('/api/organizations/:id/reset-password', (req, res) => {
 
   recalculateOrgStats();
   savePersistedData();
+  
+  // 🔥 Parol o'zgarganda Firestore bazasiga yozamiz
+  await saveOrganizationsToFirestore(organizations).catch(err => console.warn('Org save error:', err));
 
   console.log(`🔑 Tashkilot "${org.name}" uchun yangi parol o'rnatildi: ${generatedCode}`);
   res.json({
@@ -2363,7 +2392,7 @@ app.post('/api/organizations/:id/reset-password', (req, res) => {
   });
 });
 
-app.post('/api/organizations/:id/unlock', (req, res) => {
+app.post('/api/organizations/:id/unlock', async (req, res) => { // 🔥 async qo'shildi
   const { id } = req.params;
   const org = organizations.find((o) => o.id === id);
   if (!org) {
@@ -2376,6 +2405,7 @@ app.post('/api/organizations/:id/unlock', (req, res) => {
 
   recalculateOrgStats();
   savePersistedData();
+  await saveOrganizationsToFirestore(organizations).catch(err => console.warn('Org save error:', err)); // 🔥
 
   res.json({
     success: true,
@@ -2384,7 +2414,7 @@ app.post('/api/organizations/:id/unlock', (req, res) => {
   });
 });
 
-app.post('/api/organizations/:id/lock', (req, res) => {
+app.post('/api/organizations/:id/lock', async (req, res) => { // 🔥 async qo'shildi
   const { id } = req.params;
   const org = organizations.find((o) => o.id === id);
   if (!org) {
@@ -2396,6 +2426,7 @@ app.post('/api/organizations/:id/lock', (req, res) => {
 
   recalculateOrgStats();
   savePersistedData();
+  await saveOrganizationsToFirestore(organizations).catch(err => console.warn('Org save error:', err)); // 🔥
 
   res.json({
     success: true,
@@ -2427,7 +2458,7 @@ app.get('/api/organizations', (req, res) => {
   res.json(organizations);
 });
 
-app.post('/api/organizations', (req, res) => {
+app.post('/api/organizations', async (req, res) => { // 🔥 async qo'shildi
   const { name, code, category, phone, leader, password } = req.body;
   if (!name || !code) {
     return res.status(400).json({ error: 'Tashkilot nomi va kodi kiritilishi shart' });
@@ -2450,10 +2481,14 @@ app.post('/api/organizations', (req, res) => {
 
   organizations.push(newOrg);
   recalculateOrgStats();
+  
+  // 🔥 Yangi tashkilot qo'shilganda Firestore bazasiga yozamiz
+  await saveOrganizationsToFirestore(organizations).catch(err => console.warn('Org save error:', err));
+
   res.status(201).json(newOrg);
 });
 
-app.put('/api/organizations/:id', (req, res) => {
+app.put('/api/organizations/:id', async (req, res) => { // 🔥 async qo'shildi
   const { id } = req.params;
   const { name, code, category, phone, leader, password } = req.body;
 
@@ -2473,10 +2508,12 @@ app.put('/api/organizations/:id', (req, res) => {
   };
 
   recalculateOrgStats();
+  await saveOrganizationsToFirestore(organizations).catch(err => console.warn('Org save error:', err)); // 🔥
+
   res.json(organizations[orgIndex]);
 });
 
-app.delete('/api/organizations/:id', (req, res) => {
+app.delete('/api/organizations/:id', async (req, res) => { // 🔥 async qo'shildi
   const { id } = req.params;
   const orgIndex = organizations.findIndex((o) => o.id === id);
   if (orgIndex === -1) {
@@ -2485,6 +2522,8 @@ app.delete('/api/organizations/:id', (req, res) => {
 
   const deleted = organizations.splice(orgIndex, 1)[0];
   recalculateOrgStats();
+  await saveOrganizationsToFirestore(organizations).catch(err => console.warn('Org save error:', err)); // 🔥
+  
   res.json({ success: true, deleted });
 });
 
@@ -2655,6 +2694,7 @@ app.post('/api/appeals/:id/explanation', async (req, res) => {
 
   appeal.explanations.push(explanationRecord);
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga ham saqlaymiz
 
   // Telegram bot orqali fuqaroga tushuntirish xatini zudlik bilan yuborish
   if (telegramBot && appeal.telegramChatId) {
@@ -2717,6 +2757,7 @@ app.post('/api/appeals/:id/request-transfer', (req, res) => {
   };
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
   res.json({ success: true, appeal });
 });
 
@@ -2769,6 +2810,7 @@ app.post('/api/appeals/:id/approve-transfer', async (req, res) => {
   appeal.transferRequest.status = 'approved';
   appeal.transferRequest.reviewedAt = new Date().toISOString();
   recalculateOrgStats();
+  await saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
 
   // Telegram bot orqali fuqaroga xabar berish
   if (telegramBot && appeal.telegramChatId) {
@@ -2804,6 +2846,7 @@ app.post('/api/appeals/:id/reject-transfer', (req, res) => {
   appeal.transferRequest.reviewedAt = new Date().toISOString();
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
   res.json({ success: true, appeal });
 });
 
@@ -2849,6 +2892,7 @@ app.post('/api/appeals/:id/invite-coassignment', (req, res) => {
   });
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
   res.json({ success: true, appeal });
 });
 
@@ -2916,6 +2960,7 @@ app.post('/api/appeals/:id/respond-coassignment', async (req, res) => {
   }
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
   res.json({ success: true, appeal });
 });
 
@@ -2968,6 +3013,7 @@ app.patch('/api/appeals/:id/resolve-coassignment', async (req, res) => {
   }
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
 
   // Send photo & resolution notice to Telegram user
   if (telegramBot && appeal.telegramChatId) {
@@ -3016,6 +3062,7 @@ app.patch('/api/appeals/:id/reject-authority', (req, res) => {
   appeal.resolutionText = reason || 'Ushbu murojaat tashkilot vakolatiga kirmaydi va Bosh Kabinetga yo\'naltirildi.';
   
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
   res.json(appeal);
 });
 
@@ -3061,6 +3108,7 @@ app.patch('/api/appeals/:id/feedback', (req, res) => {
   }
 
   recalculateOrgStats();
+  saveSingleAppealToFirestore(appeal).catch(console.error); // 🔥 Bulutga saqlash
   res.json(appeal);
 });
 
