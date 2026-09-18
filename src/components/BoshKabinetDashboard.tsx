@@ -568,41 +568,36 @@ export const BoshKabinetDashboard: React.FC<BoshKabinetDashboardProps> = ({
   const maxOrgCount = Math.max(...topOrganizations.map((o) => o.count), 1);
 
   // Top Shtab Tasks Ranking Calculation (100% Real from tasks)
-// Top Shtab Tasks Ranking Calculation
-const topTasksStats = useMemo(() => {
-  const orgTaskMap: { [orgId: string]: { id: string; name: string; total: number; approved: number; inProgress: number; underReview: number } } = {};
-  
-  organizations.forEach((org) => {
-    orgTaskMap[org.id] = { id: org.id, name: org.name, total: 0, approved: 0, inProgress: 0, underReview: 0 };
-  });
+  const topTasksStats = useMemo(() => {
+    const orgTaskMap: { [orgId: string]: { id: string; name: string; total: number; approved: number; inProgress: number; underReview: number } } = {};
+    
+    organizations.forEach((org) => {
+      orgTaskMap[org.id] = { id: org.id, name: org.name, total: 0, approved: 0, inProgress: 0, underReview: 0 };
+    });
 
-  tasks.forEach((t) => {
-    if (t.targetOrgId === 'all') {
-      organizations.forEach((org) => {
-        if (orgTaskMap[org.id]) {
-          orgTaskMap[org.id].total += 1;
-          // Mana bu yerda 'tasdiqlandi' yoki 'tekshiruvda' bo'lsa approved ga qo'shiladi:
-          if (t.status === 'tasdiqlandi' || t.status === 'tekshiruvda') {
-            orgTaskMap[org.id].approved += 1;
-          } else if (t.status === 'jarayonda') {
-            orgTaskMap[org.id].inProgress += 1;
+    tasks.forEach((t) => {
+      if (t.targetOrgId === 'all') {
+        organizations.forEach((org) => {
+          if (orgTaskMap[org.id]) {
+            orgTaskMap[org.id].total += 1;
+            if (t.status === 'tasdiqlandi') orgTaskMap[org.id].approved += 1;
+            else if (t.status === 'tekshiruvda') orgTaskMap[org.id].underReview += 1;
+            else orgTaskMap[org.id].inProgress += 1;
           }
-        }
-      });
-    } else if (orgTaskMap[t.targetOrgId]) {
-      orgTaskMap[t.targetOrgId].total += 1;
-      if (t.status === 'tasdiqlandi' || t.status === 'tekshiruvda') {
-        orgTaskMap[t.targetOrgId].approved += 1;
-      } else if (t.status === 'jarayonda') {
-        orgTaskMap[t.targetOrgId].inProgress += 1;
+        });
+      } else if (orgTaskMap[t.targetOrgId]) {
+        orgTaskMap[t.targetOrgId].total += 1;
+        if (t.status === 'tasdiqlandi') orgTaskMap[t.targetOrgId].approved += 1;
+        else if (t.status === 'tekshiruvda') orgTaskMap[t.targetOrgId].underReview += 1;
+        else orgTaskMap[t.targetOrgId].inProgress += 1;
       }
-    }
-  });
+    });
 
-  return Object.values(orgTaskMap)
-    .sort((a, b) => b.total - a.total || b.approved - a.approved)
-    .slice(0, 5);
-}, [tasks, organizations]);
+    return Object.values(orgTaskMap)
+      .sort((a, b) => b.total - a.total || b.approved - a.approved)
+      .slice(0, 5);
+  }, [tasks, organizations]);
+
   const maxTaskCount = Math.max(...topTasksStats.map((t) => t.total), 1);
 
   // Top Mahalla Yettiligi Tasks Ranking Calculation (100% Real from mahallaTasks)
